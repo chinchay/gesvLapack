@@ -1,5 +1,7 @@
 module GESVfunctions
 
+const dlmach_val = dlmach()
+
 # source (LAPACK is a software package provided by Univ. of Tennessee):
 # this is a modification for Julia language, for square matrices!
 # http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f_source.html
@@ -36,6 +38,7 @@ function dgetrf!(A, n, ipiv, info)
 
     # Determine the block size for this environment.
     # nb = ilaenv(1, "DGETRF", " ", n, n, -1, -1)
+    # for the above case, it resulted nb=64:
     nb = 64 #
     if (nb <= 1) || (nb >= n) 
         # Use unblocked code.
@@ -82,6 +85,118 @@ end
 # function ilaenv( ISPEC, NAME, OPTS,  N1, N2, N3, N4 )
 # end
 
+# dgetrf2(n, m, X, p, ipiv, info)
+function dgetrf2( m, n, A, lda, IPIV, info )
+    one  = 1.0
+    zero = 0.0
+    #
+    if m == 1
+        #* Use unblocked code for one row case
+        #* Just need to handle IPIV and INFO
+        IPIV[i] = 1
+        if A[i, i] == zero
+            info = 1
+        end
+    elseif n == 1
+        #* Use unblocked code for one column case
+
+        #* Compute machine safe minimum
+        # sfmin = dlamch('S')
+        sfmin = dlmach_val # defined as global variable in the current module
+
+        #* Find pivot and test for singularity
+        i = idamax( m, A[1, 1], 1 )
+        IPIV[1] = i
+        
+        if  A[i, 1] != zero
+            #* Apply the interchange
+            if i != 1
+                temp    = A[1, 1]
+                A[1, 1] = A[i, 1]
+                A[i, 1] = temp
+            end
+
+            #* Compute elements 2:M of the column                
+            if abs( A[1, 1] ) >= sfmin
+                dscal( m - 1, one / A[1, 1], A[2, 1], 1 )
+            else
+                for i in 1:(m - 1)
+                    A[1 + i, 1] = A[1 + i, 1] / A[1, 1]
+                end
+            end
+        else
+            info = 1
+        end
+    else
+        min_mn = min(m, n)
+        #* Use recursive code
+        n1 = min_mn / 2
+        n2 = n - n1
+
+        # *               [ A11 ]
+        # *        Factor [ --- ]
+        # *               [ A21 ]   
+        dgetrf2( m, n1, A, lda, IPIV, iinfo )  
+        
+        if (info == 0) && (iinfo > 0)
+            info = iinfo
+        end
+
+        # *                              [ A12 ]
+        # *        Apply interchanges to [ --- ]
+        # *                              [ A22 ]
+        n1plus1  = n1 + 1
+        dlaswp( n2, A[1, n1plus1], lda, 1, n1, IPIV, 1 )
+
+        # *        Solve A12            
+        dtrsm( 'L', 'L', 'N', 'U', n1, n2, one, A, lda, A[1, n1plus1], lda )        
+
+        # *        Update A22
+        dgetrf2( m - n1, n2, A[n1plus1, n1plus1], lda, IPIV[n1plus1], iinfo )   
+        
+        # *        Factor A22
+        dgetrf2( m - n1, n2, A[n1plus1, n1plus1], lda, IPIV[n1plus1], iinfo )  
+        
+        #* Adjust INFO and the pivot indices
+        if (info == 0) && (iinfo > 0)
+            info = iinfo + n1
+        end
+
+        for i in n1plus1:min_mn
+            IPIV[i] += n1
+        end
+
+        #* Apply interchanges to A21
+        dlaswp( n1, A[1, 1], lda, n1plus1, min_mn, IPIV, 1 )
+    end
+end
+
+
+# http://www.netlib.org/lapack/explore-html/d5/dd4/dlamch_8f_source.html#l00068
+function dlmach() # for dlamch('S')
+    # https://docs.julialang.org/en/v1/manual/integers-and-floating-point-numbers/
+    # 
+    # The distance between 1.0 and the next larger representable floating-point value of Float64.
+    # eps() : same as eps(Float64) : 2.220446049250313e-16    
+    # eps(0.0) : 5.0e-324 
+    # prevfloat(Inf)  : 1.7976931348623157e308
+    # nextfloat(-Inf) : -1.7976931348623157e308 
+
+    zero = 0.0
+    one  = 1.0
+    #
+    # eps_ = eps(zero) * 0.5 # it will return 0.0 in REPL julia
+    eps_ = eps(zero) # it returns 5.0e-324
+    #
+    small = one / prevfloat(Inf)
+    sfmin = eps(zero) # tiny(zero)
+    if small >= sfmin
+        #* Use SMALL plus a bit, to avoid the possibility of rounding
+        #* causing overflow when computing  1/sfmin.
+        sfmin = small * (one + eps_)
+    end
+    return sfmin
+end
 
 
 end # module
