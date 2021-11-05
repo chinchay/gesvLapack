@@ -6,7 +6,7 @@
 - `A` and `B` are **SQUARE** matrices, bothe of the order `n`.
 
 ## Goals
-- Reduce the number of allocations, and time solving
+- Reduce the number of allocations, and calculation time
 
 ## Where to use it
 - Intended for iterative processes, e.g. self-consistent equations. See tests directory.
