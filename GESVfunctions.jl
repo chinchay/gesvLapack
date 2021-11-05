@@ -12,7 +12,7 @@ function dgesv!(n, A, B, ipiv)
     
     #* Compute the LU factorization of A.
     # CALL dgetrf( n, n, a, lda, ipiv, info )
-    dgetrf!(n, n, A, n, ipiv, info)
+    dgetrf!(A, n, ipiv, info)
     # A is mutated according to:
     # http://www.netlib.org/lapack/explore-html/dd/d9a/group__double_g_ecomputational_ga0019443faea08275ca60a734d0593e60.html#ga0019443faea08275ca60a734d0593e60
     # "A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -31,11 +31,12 @@ end
 
 # needs to define dgemm, dgetrf2, dlaswp, dtrsm, xerbla, ilaenv for dgetrf
 # A is mutated
-function dgetrf!( M, N, A, LDA, IPIV, INFO )
+function dgetrf!(A, n, ipiv, info)
     one = 1.0
 
     # Determine the block size for this environment.
-    nb = ilaenv(1, "DGETRF", " ", n, n, -1, -1)
+    # nb = ilaenv(1, "DGETRF", " ", n, n, -1, -1)
+    nb = 64 #
     if (nb <= 1) || (nb >= n) 
         # Use unblocked code.
         dgetrf2(n, n, A, n, ipiv, info)
@@ -75,7 +76,11 @@ function dgetrf!( M, N, A, LDA, IPIV, INFO )
 end
 
 
-
+#TODO: define ilaenv function
+#* I found that ilaenv just returns nb=64 for `ilaenv(1, "DGETRF", " ", n, n, -1, -1)` in dgetrf!(...)
+# nb =   ilaenv(1,     "DGETRF", " ", n, n, -1, -1)
+# function ilaenv( ISPEC, NAME, OPTS,  N1, N2, N3, N4 )
+# end
 
 
 
