@@ -105,7 +105,9 @@ function dgetrf2( m, n, A, lda, IPIV, info )
         sfmin = dlmach_val # defined as global variable in the current module
 
         #* Find pivot and test for singularity
-        i = idamax( m, A[1, 1], 1 )
+        # i = idamax( m, A[1, 1], 1 )
+        i = finIndxMax(A, 1, m) # see Utils.jl
+
         IPIV[1] = i
         
         if  A[i, 1] != zero
