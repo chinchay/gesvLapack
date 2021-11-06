@@ -93,8 +93,8 @@ function dgetrf2( m, n, A, lda, IPIV, info )
     if m == 1
         #* Use unblocked code for one row case
         #* Just need to handle IPIV and INFO
-        IPIV[i] = 1
-        if A[i, i] == zero
+        IPIV[1] = 1
+        if A[1, 1] == zero
             info = 1
         end
     elseif n == 1
