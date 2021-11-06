@@ -86,15 +86,16 @@ end
 # end
 
 # dgetrf2(n, m, X, p, ipiv, info)
-function dgetrf2( m, n, A, lda, IPIV, info )
+# function dgetrf2( m, n, A, lda, IPIV, info )
+function dgetrf2( m, n, A, iStart, iEnd, lda, IPIV, info )
     one  = 1.0
     zero = 0.0
     #
     if m == 1
         #* Use unblocked code for one row case
         #* Just need to handle IPIV and INFO
-        IPIV[1] = 1
-        if A[1, 1] == zero
+        IPIV[iStart] = 1
+        if A[iStart] == zero
             info = 1
         end
     elseif n == 1
@@ -106,17 +107,13 @@ function dgetrf2( m, n, A, lda, IPIV, info )
 
         #* Find pivot and test for singularity
         # i = idamax( m, A[1, 1], 1 )
-        i = finIndxMax(A, 1, m) # see Utils.jl
+        i = finIndxMax(A, iStart, iStart + m - 1) # see Utils.jl
 
-        IPIV[1] = i
+        IPIV[iStart] = i
         
-        if  A[i, 1] != zero
+        if  A[i, iStart] != zero
             #* Apply the interchange
-            if i != 1
-                temp    = A[1, 1]
-                A[1, 1] = A[i, 1]
-                A[i, 1] = temp
-            end
+            swap(X, iStart, i)  # see Utils.jl
 
             #* Compute elements 2:M of the column                
             if abs( A[1, 1] ) >= sfmin
