@@ -12,8 +12,15 @@ function finIndxMax(X, iStart, iEnd)
             max  = xi
         end
     end
-    return imax    
+    return imax
+end
 
+function swap1(X, iS, i)
+    if i != iS
+        temp      = X[iS, iS]
+        X[iS, iS] = X[i, iS]
+        X[i, iS]  = temp
+    end
 end
 
 end

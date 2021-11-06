@@ -86,8 +86,7 @@ end
 # end
 
 # dgetrf2(n, m, X, p, ipiv, info)
-# function dgetrf2( m, n, A, lda, IPIV, info )
-function dgetrf2( m, n, A, iStart, iEnd, lda, IPIV, info )
+function dgetrf2( m, n, A, lda, IPIV, info )
     one  = 1.0
     zero = 0.0
     #
@@ -95,7 +94,7 @@ function dgetrf2( m, n, A, iStart, iEnd, lda, IPIV, info )
         #* Use unblocked code for one row case
         #* Just need to handle IPIV and INFO
         IPIV[iStart] = 1
-        if A[iStart] == zero
+        if A[iStart, iStart] == zero
             info = 1
         end
     elseif n == 1
@@ -113,7 +112,7 @@ function dgetrf2( m, n, A, iStart, iEnd, lda, IPIV, info )
         
         if  A[i, iStart] != zero
             #* Apply the interchange
-            swap(X, iStart, i)  # see Utils.jl
+            swap1(X, iStart, i) # see Utils.jl
 
             #* Compute elements 2:M of the column                
             if abs( A[1, 1] ) >= sfmin
