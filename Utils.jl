@@ -1,5 +1,6 @@
 module Utils
 
+export finIndxMax, swap!, multiply!, getIndexFortranReading
 
 function finIndxMax(X, iStart, iEnd)
     # Julia, as Fortran, read matrices row by row for each column
@@ -15,16 +16,74 @@ function finIndxMax(X, iStart, iEnd)
     return imax
 end
 
-function swap1(X, iS, i)
-    if i != iS
-        temp      = X[iS, iS]
-        X[iS, iS] = X[i, iS]
-        X[i, iS]  = temp
+# mutates X
+function swap!(X, k0, k)
+    if k != k0
+        temp  = X[k0]
+        X[k0] = X[k]
+        X[k]  = temp
     end
 end
 
+# mutates X
+function unrolledMultiply!(X, alpha, iStart, iEnd)
+    n = iEnd - iStart + 1
+    m = mod(n ,5)
+    if m != 0
+        for i in iStart:(iStart + m - 1)
+            X[i] *= alpha
+        end    
+    end
+    # 
+    if n >= 5
+        for i in (iStart + m):5:iEnd
+            X[i]     *= alpha
+            X[i + 1] *= alpha
+            X[i + 2] *= alpha
+            X[i + 3] *= alpha
+            X[i + 4] *= alpha
+        end
+    end
 end
 
+function unrolledDivide!(X, alpha, iStart, iEnd)
+    n = iEnd - iStart + 1
+    m = mod(n ,5)
+    if m != 0
+        for i in iStart:(iStart + m - 1)
+            X[i] /= alpha
+        end    
+    end
+    # 
+    if n >= 5
+        for i in (iStart + m):5:iEnd
+            X[i]     /= alpha
+            X[i + 1] /= alpha
+            X[i + 2] /= alpha
+            X[i + 3] /= alpha
+            X[i + 4] /= alpha
+        end
+    end
+end
+
+
+function divide!(X, divisor, iStart, iEnd, sfmin)
+    if abs(divisor) >= sfmin
+        mutltiplicador = 1.0 / divisor
+        unrolledMultiply!(X, mutltiplicador, iStart, iEnd)
+    else
+        unrolledDivide!(X, divisor, iStart, iEnd)
+    end
+end
+
+function getIndexFortranReading(row, col, nRange)
+    # Similar as Fortran reading
+    k = ((col - 1) * nRange) + row
+    return k
+end
+
+
+end
 ## to understand how A(j,j) is passed by reference in Fortran:
 
 # Program Hello
