@@ -19,11 +19,16 @@ end
 # mutates X
 function swap!(X, k0, k)
     if k != k0
+        swap0!(X, k0, k)
+    end
+end
+
+function swap0!(X, k0, k)
         temp  = X[k0]
         X[k0] = X[k]
         X[k]  = temp
-    end
 end
+
 
 # mutates X
 function unrolledMultiply!(X, alpha, iStart, iEnd)
@@ -82,6 +87,40 @@ function getIndexFortranReading(row, col, nRange)
     return k
 end
 
+
+function swapRowARowB!(M, rowA, rowB, colStart, colEnd)
+    if rowA != rowB
+        for col in colStart:colEnd
+            temp = M[rowA, col]
+            M[rowA, col] = M[rowB, col]
+            M[rowB, col] = temp
+        end
+    end
+end
+
+function swapManyRows!(M, listOfPairRows, k1, k2, colStart, colEnd)
+    for rowA in k1:k2
+        rowB = listOfPairRows[rowA]
+        swapRowARowB!(M, rowA, rowB, colStart, colEnd)
+    end
+
+end
+
+# modified from http://www.netlib.org/lapack/explore-html/d7/d6b/dlaswp_8f_source.html#l00114
+function dlaswp!(A, n, ipiv, k1, k2)
+    n32 = div(n, 32) * 32
+    #
+    if n32 != 0
+        for colStart in 1:32:n32
+            swapManyRows!(A, ipiv, k1, k2, colStart, colStart + 31)
+        end
+    end
+    #
+    if n32 != n
+        n32 += 1
+        swapManyRows!(A, ipiv, k1, k2, n32, n)
+    end
+end
 
 end
 ## to understand how A(j,j) is passed by reference in Fortran:
