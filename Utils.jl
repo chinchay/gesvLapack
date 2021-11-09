@@ -107,18 +107,22 @@ function swapManyRows!(M, listOfPairRows, k1, k2, colStart, colEnd)
 end
 
 # modified from http://www.netlib.org/lapack/explore-html/d7/d6b/dlaswp_8f_source.html#l00114
-function dlaswp!(A, n, ipiv, k1, k2)
+function dlaswp!(A, colMin, colMax, ipiv, k1, k2)
+    n = colMax - colMin + 1
     n32 = div(n, 32) * 32
     #
     if n32 != 0
-        for colStart in 1:32:n32
-            swapManyRows!(A, ipiv, k1, k2, colStart, colStart + 31)
-        end
+        for i in 1:32:n32
+            col_o = colMin + i - 1
+            col_f = col_o + 31
+            swapManyRows!(A, ipiv, k1, k2, col_o, col_f)
     end
     #
     if n32 != n
         n32 += 1
-        swapManyRows!(A, ipiv, k1, k2, n32, n)
+        col_o = colMin + n32 - 1
+        col_f = n
+        swapManyRows!(A, ipiv, k1, k2, col_o, col_f)
     end
 end
 
