@@ -126,6 +126,64 @@ function dlaswp!(A, colMin, colMax, ipiv, k1, k2)
     end
 end
 
+# function initialize(rangeA)
+#     global T = zeros(Float32, rangeA, rangeA)
+# end
+
+# adapted from:
+# http://www.netlib.org/lapack/explore-html/d1/d54/group__double__blas__level3_ga6a0a7704f4a747562c1bd9487e89795c.html#ga6a0a7704f4a747562c1bd9487e89795c
+function trsm_LLNU!(A, ro, co, T, lo, m, n)
+    # dtrsm(SIDE,UPLO,TRANSA,DIAG,M,N,ALPHA,A,LDA,B,LDB) 
+    # side  = 'L'
+    # ul    = 'L'
+    # tA    = 'N'
+    # dA    = 'U'   
+    # T was already defined in initialize()
+    # global T .= 0.0
+    # B .= 0.0 # no need to do that
+
+    # copy A[l2,l2+1,l2+2,...] into B
+    cont = 1
+    mn   = m * n
+    for l in lo:mn
+        T[cont] = A[l]
+        cont += 1
+    end
+    
+
+    # ... things
+    # lside = true # if lsame(side,'L')
+    # nrowa = m # if lsame(side,'L')
+    # upper = false  # lsame(uplo,'U')
+    # 
+    # nounit = false # lsame(diag,'N')    
+    
+    info = 0
+    #
+    # *           Form  B := inv( A ) * B.
+    for j in 1:n
+        for k in 1:m
+            if B[k,j] != 0.0
+                K = co + k - 1
+                for i in (k + 1):m
+                    I = ro + i - 1
+                    T[i,j] -= ( T[k,j] * A[I,K] )
+                end
+            end
+        end
+    end
+    # 
+
+    # mutate A:
+    cont = 1
+    for l in lo:mn
+        A[l] = T[cont]
+        cont += 1
+    end
+end
+
+
+
 end
 ## to understand how A(j,j) is passed by reference in Fortran:
 
