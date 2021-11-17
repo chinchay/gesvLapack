@@ -1,6 +1,9 @@
 module Utils
+###############################################################################
 
 export finIndxMax, swap!, multiply!, getIndexFortranReading
+
+using LinearAlgebra # for LinearAlgebra.mul!
 
 function finIndxMax(X, iStart, iEnd)
     # Julia, as Fortran, read matrices row by row for each column
@@ -116,6 +119,7 @@ function dlaswp!(A, colMin, colMax, ipiv, k1, k2)
             col_o = colMin + i - 1
             col_f = col_o + 31
             swapManyRows!(A, ipiv, k1, k2, col_o, col_f)
+        end
     end
     #
     if n32 != n
@@ -130,6 +134,41 @@ end
 #     global T = zeros(Float32, rangeA, rangeA)
 # end
 
+function AtoTaux!(A, T, lo, dl)
+    # mutate T:
+    cont = 1
+    for l in lo:(lo + dl - 1)
+        T[cont] = A[l]
+        cont += 1
+    end    
+end
+
+function TauxToA!(A, T, lo, dl)
+    # mutate A:
+    cont = 1
+    for l in lo:(lo + dl - 1)
+        A[l] = T[cont]
+        cont += 1
+    end
+end
+
+
+# Benchmark:
+# n = 3
+# A = rand(Float32, n, n)
+# B = rand(Float32, n, n)
+# C = zeros(Float32, n, n)
+# α = 1
+# β = 0
+# using BenchmarkTools
+# using LinearAlgebra
+# include("Utils.jl")
+# @btime Utils.trsm_LLNU!(A, 1, 1, T, 1, n, n)
+#   277.994 ns (0 allocations: 0 bytes)
+#
+# @btime LinearAlgebra.mul!(C, A, B, α, β)
+#   95.686 ns (1 allocation: 32 bytes)
+#
 # adapted from:
 # http://www.netlib.org/lapack/explore-html/d1/d54/group__double__blas__level3_ga6a0a7704f4a747562c1bd9487e89795c.html#ga6a0a7704f4a747562c1bd9487e89795c
 function trsm_LLNU!(A, ro, co, T, lo, m, n)
@@ -143,13 +182,9 @@ function trsm_LLNU!(A, ro, co, T, lo, m, n)
     # B .= 0.0 # no need to do that
 
     # copy A[l2,l2+1,l2+2,...] into B
-    cont = 1
-    mn   = m * n
-    for l in lo:mn
-        T[cont] = A[l]
-        cont += 1
-    end
-    
+    dl = m * n
+    # mutate T
+    AtoTaux!(A, T, lo, dl)
 
     # ... things
     # lside = true # if lsame(side,'L')
@@ -163,7 +198,7 @@ function trsm_LLNU!(A, ro, co, T, lo, m, n)
     # *           Form  B := inv( A ) * B.
     for j in 1:n
         for k in 1:m
-            if B[k,j] != 0.0
+            if T[k,j] != 0.0
                 K = co + k - 1
                 for i in (k + 1):m
                     I = ro + i - 1
@@ -172,19 +207,35 @@ function trsm_LLNU!(A, ro, co, T, lo, m, n)
             end
         end
     end
-    # 
+    #
+    # mutate A:
+    TauxToA!(A, T, lo, dl)
+end
+
+function gemm_NN!(A, ro, co, T1, l1, T2, l2, m, n)
+    dl = m * n
+    # mutate T1 and T2
+    AtoTaux!(A, T1, l1, dl)
+    AtoTaux!(A, T2, l2, dl)
+
+
+    # https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/
+    # LinearAlgebra.mul!(T2, A, T1)
+    LinearAlgebra.mul!(C, A, B, α, β) # -> C
 
     # mutate A:
-    cont = 1
-    for l in lo:mn
-        A[l] = T[cont]
-        cont += 1
-    end
+    TauxToA!(A, C, lo, dl)
 end
 
 
 
+
+
+
+###############################################################################
 end
+###############################################################################
+
 ## to understand how A(j,j) is passed by reference in Fortran:
 
 # Program Hello
